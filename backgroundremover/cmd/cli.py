@@ -2,7 +2,7 @@ import argparse
 import os
 from distutils.util import strtobool
 from .. import utilities
-from ..bg import remove
+from ..bg import remove, max_workers
 
 
 def main():
@@ -248,11 +248,11 @@ def main():
         print("Example: backgroundremover -i video.mp4 -tgwb -bi background.png -o output.gif")
         exit(1)
 
-    # Cap worker count to prevent hangs and resource exhaustion (see issue #181)
-    if args.workernodes > 4:
-        print(f"Warning: Requested {args.workernodes} workers, capping at 4. Higher values cause hangs and GPU memory exhaustion.")
-        print("Use -wn 1 through -wn 4 for best results.")
-        args.workernodes = 4
+    # Dynamically cap worker count based on available GPU memory (see issue #181)
+    safe_max = max_workers(model_name=args.model, gpu_batchsize=args.gpubatchsize)
+    if args.workernodes > safe_max:
+        print(f"Warning: Requested {args.workernodes} workers, capping at {safe_max} based on available memory.")
+        args.workernodes = safe_max
 
     # Parse background color if provided
     background_color = None
